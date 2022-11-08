@@ -8,7 +8,7 @@
     <link rel="stylesheet prefetch" href="https://fonts.googleapis.com/css?family=Coda">
     <link rel="stylesheet" href="./styles/app.css">
     <link rel="stylesheet" type="text/css" href="./styles/responsive.css">
-    <script type="text/javascript" src="data.js"></script>
+    <script type="text/javascript" src="./js/data.js"></script>
     <link rel="stylesheet" href="./styles/animate.css">
 <style></style></head>
 <body>
@@ -39,16 +39,8 @@
         <!-- Modal content -->
         <div class="modal-content"> 
           <h3>Matching Game</h3>
-          <h2 id="msg_won" style="color: blue; display: none;">You Won</h2>
-          <h2 id="msg_lost" style="color: crimson; display: none;">You Lost</h2>
-          <div id="div_level" style="display: none;">
-            <button type="button" class="refresh" style="margin-top: 30px; margin-right: 50px;" onclick="refresh()">Restart Game!</button>
-            <button type="button" class="refresh" style="margin-top: 30px;" onclick="nextLevel()">Next Level!</button>
-          </div>
-          <div id="div_game_lost" style="display: none;">
-            <button type="button" class="refresh" style="margin-top: 30px;" onclick="refresh()">Restart Game!</button>       
-          </div>
-          <div id="div_game_wow" style="display: none;">
+          <div id="div_won"  style="display: none;">
+            <h2 style="color: blue;">You Won</h2>
             <div class="count-move">
               <div class="moves" style="margin-top: 15px;"><span>Score: </span><span id="scores_count_all" class="count">0</span></div>
               <div class="rating">
@@ -61,12 +53,25 @@
             </div>
             <button type="button" class="refresh" style="margin-top: 30px;" onclick="start()">Restart Game!</button>
           </div>
-          <button id="button_start" type="button" class="refresh" style="margin-top: 30px;" onclick="start()">Start Game!</button>
+          <div id="div_lost" style="display: none;">
+            <h2 style="color: crimson;">You Lost</h2>
+            <button type="button" class="refresh" style="margin-top: 30px;" onclick="start()">Restart Game!</button>
+          </div>
+         
+          <div id="div_level" style="display: none;">
+            <button type="button" class="refresh" style="margin-top: 30px; margin-right: 50px;" onclick="refresh()">Restart Game!</button>
+            <button type="button" class="refresh" style="margin-top: 30px;" onclick="nextLevel()">Next Level!</button>
+          </div>
+        
+          <div id="div_start">
+            <button type="button" class="refresh" style="margin-top: 30px;" onclick="start()">Start Game!</button>
+          </div>
+         
         </div>
     </div>
 
     <button class="refresh" type="button" onclick="refresh()">Refresh</button>
-    <script src="anamation.js"></script> 
-    <script src="game.js"></script> 
+    <script src="./js/anamation.js"></script> 
+    <script src="./js/game.js"></script> 
    
 <div id="torrent-scanner-popup" style="display: none;"></div></body></html>

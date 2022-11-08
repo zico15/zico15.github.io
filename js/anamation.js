@@ -7,6 +7,7 @@ function openCardsAll(){
 }
 
 function openCard(card){
+	card.style.opacity = "1";
 	card.parentNode.className = "open";
 	card.parentNode.parentNode.className = "baseCard animated flipInY";
 }
@@ -22,6 +23,7 @@ function closeCardsAll(){
 function closeCard(card){       
 	card.parentNode.className = "card";
 	card.parentNode.parentNode.className = "baseCard";
+	card.style.opacity = "0";
 }
 
 function flipCard(card){
@@ -31,15 +33,16 @@ function flipCard(card){
 }
 
 function shakeCard(card){
-	       
+	card.style.opacity = "1";
 	card.parentNode.className = "notMatch";
 	card.parentNode.parentNode.className = "baseCard animated shake";
-	setTimeout(function(){ closeCard(card); }, 1800);
+	setTimeout(function(){ closeCard(card);}, 1800);
 };
 
 function pulseCard(card){
 	card.parentNode.className = "match";   
 	card.parentNode.parentNode.className = "baseCard animated pulse";
+	card.style.opacity = "1";
 }
 
 let timeCounter = document.getElementById('time');

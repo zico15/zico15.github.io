@@ -2,7 +2,7 @@
 var game = { minutes: 0, seconds: 0, is_run: true, matching: 0,
              level: 0, level_max: 0, card_select: null, card_max: 0,
              scores: null, clock: null, time_tester: 0.0, count: 5,
-             time_count: 0.0, stars: null
+             time_count: 0.0, stars: null, is_click: true
             };
 
 function creatingImageCard(baseCard, fileImage){
@@ -10,6 +10,7 @@ function creatingImageCard(baseCard, fileImage){
     card.className = "card";
     var img = document.createElement("img");
     img.className = "card-img";
+    img.style.opacity = "0";
     img.src = fileImage;
     card.appendChild(img);
     baseCard.appendChild(card);
@@ -81,13 +82,11 @@ function start(){
 }
 function refresh()
 {   
-    document.getElementById("msg_lost").style.display = "none";
-    document.getElementById("questionPopUp").style.display = "none";
-    document.getElementById("div_game_lost").style.display = "none";
-    document.getElementById("msg_won").style.display = "none";
-    document.getElementById("div_game_wow").style.display = "none";    
-    document.getElementById("button_start").style.display = "none";
+    document.getElementById("div_won").style.display = "none";
+    document.getElementById("div_lost").style.display = "none";    
     document.getElementById("div_level").style.display = "block";
+    document.getElementById("div_start").style.display = "none";
+    document.getElementById("questionPopUp").style.display = "none";
     if (game.is_run)
     { 
         initBoard(data[game.level]);
@@ -104,16 +103,16 @@ function refresh()
 }
 
 function gameOver(){
-    document.getElementById("msg_won").style.display = "none";
-    document.getElementById("div_game_wow").style.display = "none";    
-    document.getElementById("button_start").style.display = "none";
+    game.is_run = false;
+    document.getElementById("div_won").style.display = "none";
+    document.getElementById("div_lost").style.display = "block";    
     document.getElementById("div_level").style.display = "none";
-    document.getElementById("msg_lost").style.display = "block";
-    document.getElementById("div_game_lost").style.display = "block";
+    document.getElementById("div_start").style.display = "none";
     document.getElementById("questionPopUp").style.display = "block";
 }
 
 function gameWon(){
+    game.is_run = false;
     var score = 0, media = 0;
     game.scores.forEach(s => { score += s; });
     game.stars.forEach(s => { media += s; });
@@ -124,23 +123,22 @@ function gameWon(){
         document.getElementById(('fa-start_won_'+index)).style.color = index <= media  ? "#f5cc27" : "rgb(195 186 186)";
     console.log("media: " + media);
     document.getElementById("scores_count_all").textContent = score.toFixed(0); 
+    document.getElementById("div_won").style.display = "block";
+    document.getElementById("div_lost").style.display = "none";    
     document.getElementById("div_level").style.display = "none";
-    document.getElementById("button_start").style.display = "none";
-    document.getElementById("msg_lost").style.display = "none";
-    document.getElementById("msg_won").style.display = "block";
-    document.getElementById("div_game_wow").style.display = "block";
+    document.getElementById("div_start").style.display = "none";
     document.getElementById("questionPopUp").style.display = "block";
-    game.is_run = false;
 }
 
 function nextLevel(){
     game.level++;
+    game.is_run = true;
     refresh();
 }
 
 document.querySelector(".deck").addEventListener("click", function(event){
     let card = event.target;   
-    if (card.parentNode.className != "card" || !game.is_run)
+    if (card.parentNode.className != "card" || !game.is_run || !game.is_click)
         return;
     if (game.card_select == null)
     {
@@ -160,8 +158,12 @@ document.querySelector(".deck").addEventListener("click", function(event){
         }
         else
         {
+            game.is_click = false;
             shakeCard(game.card_select);
             shakeCard(card);
+            setTimeout(function(){
+                game.is_click = true;
+            },1500);        
         }
         game.card_select = null;
         if (game.card_max == game.matching)
@@ -169,8 +171,7 @@ document.querySelector(".deck").addEventListener("click", function(event){
             if (game.level == game.level_max - 1)
                 gameWon();
             else {
-                document.getElementById("msg_lost").style.display = "none";
-                document.getElementById("div_game_lost").style.display = "none";
+                game.is_run = false;               
                 document.getElementById("questionPopUp").style.display = "block";
             }
                 
