@@ -81,7 +81,9 @@ function start(){
 }
 function refresh()
 {   
+    document.getElementById("msg_lost").style.display = "none";
     document.getElementById("questionPopUp").style.display = "none";
+    document.getElementById("div_game_lost").style.display = "none";
     document.getElementById("msg_won").style.display = "none";
     document.getElementById("div_game_wow").style.display = "none";    
     document.getElementById("button_start").style.display = "none";
@@ -102,7 +104,12 @@ function refresh()
 }
 
 function gameOver(){
+    document.getElementById("msg_won").style.display = "none";
+    document.getElementById("div_game_wow").style.display = "none";    
+    document.getElementById("button_start").style.display = "none";
+    document.getElementById("div_level").style.display = "none";
     document.getElementById("msg_lost").style.display = "block";
+    document.getElementById("div_game_lost").style.display = "block";
     document.getElementById("questionPopUp").style.display = "block";
 }
 
@@ -161,8 +168,12 @@ document.querySelector(".deck").addEventListener("click", function(event){
         {   
             if (game.level == game.level_max - 1)
                 gameWon();
-            else
+            else {
+                document.getElementById("msg_lost").style.display = "none";
+                document.getElementById("div_game_lost").style.display = "none";
                 document.getElementById("questionPopUp").style.display = "block";
+            }
+                
         }
     }
     
