@@ -82,6 +82,7 @@ function start(){
 }
 function refresh()
 {   
+    game.is_run = true;
     document.getElementById("div_won").style.display = "none";
     document.getElementById("div_lost").style.display = "none";    
     document.getElementById("div_level").style.display = "block";
