@@ -2,7 +2,7 @@
 var game = { minutes: 0, seconds: 0, is_run: true, matching: 0,
              level: 0, level_max: 0, card_select: null, card_max: 0,
              scores: null, clock: null, time_tester: 0.0, count: 5,
-             time_count: 0.0, stars: null, is_click: true
+             time_count: 0.0, stars: null, is_click: true, movements: 0
             };
 
 function creatingImageCard(baseCard, fileImage){
@@ -57,13 +57,17 @@ function  initBoard(level){
     game.count = 5;
     game.time_count = 0.0;
     game.matching = 0;
+    game.movements = 0;
+    document.getElementById("movimentos_count").textContent =  game.movements; 
     game.time_tester = parseFloat( `${game.minutes}.${game.seconds}`) / 5.0;
     console.log("time: "+ game.time_tester);
     document.getElementById("title").textContent = level.title;
     document.getElementById("time").textContent = level.time; 
     document.getElementById("scores_count").textContent = 0;    
-    game.minutes = level.time.minutes;
-    game.seconds = level.time.seconds;
+    /*game.minutes = level.time.minutes;
+    game.seconds = level.time.seconds;*/
+    game.minutes = 0;
+    game.seconds = 0;
     setTextTime();
     var board = document.getElementById("board-view");
     board.innerHTML = "";
@@ -153,13 +157,17 @@ document.querySelector(".deck").addEventListener("click", function(event){
             var score = `${game.minutes}.${game.seconds}`;
             game.scores[game.level] += parseFloat(score) * (game.level + 1) * 15;
             document.getElementById("scores_count").textContent = game.scores[game.level].toFixed(0); 
-            game.matching += 2;
+            game.movements++;
+            document.getElementById("movimentos_count").textContent =  game.movements;         
+            game.matching += 2;           
             pulseCard(game.card_select);
             pulseCard(card);
         }
         else
         {
             game.is_click = false;
+            game.movements++;
+            document.getElementById("movimentos_count").textContent =  game.movements;
             shakeCard(game.card_select);
             shakeCard(card);
             setTimeout(function(){
