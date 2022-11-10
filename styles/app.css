@@ -259,15 +259,36 @@ img {
 
 .calc-user {
     display: flex;
-    width: 520px;
+    width: 380px;
+    height: 50px;
+    max-width: 530px;
     background: linear-gradient(160deg, #29e779 0%, #4568dc 100%);
-    justify-content: space-between;
     border-radius: 10px;
-    padding: 10px 20px;
+    padding: 7px 10px;
     color: #fff;
     margin: auto;
     margin-top: 40px;
     margin-bottom: 15px;
+}
+#title {
+    font-size: 15px;
+}
+
+@media only screen and (min-width: 576px) {
+    .calc-user {
+        width: 600px;
+    }
+    #title {
+        font-size: 25px;
+    }
+  }
+
+.moves {
+    margin-top: 15px;
+}
+
+.time {
+    margin-top: 15px;
 }
 
 .rating i {

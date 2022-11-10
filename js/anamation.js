@@ -104,6 +104,6 @@ function myTimer() {
 }
 
 function setTextTime(){
-	timeCounter.textContent =  `${game.minutes > 9 ? game.minutes : "0" + game.minutes} : ${game.seconds > 9 ? game.seconds : "0" + game.seconds}`;
+	timeCounter.textContent =  `${game.minutes > 9 ? game.minutes : "0" + game.minutes}:${game.seconds > 9 ? game.seconds : "0" + game.seconds}`;
 	timeCounterAll.textContent = timeCounter.textContent ;
 }
