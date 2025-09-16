@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Matching Game</title>
+  <meta name="description" content="">
+  <link rel="stylesheet prefetch" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.1/css/font-awesome.min.css">
+  <link rel="stylesheet prefetch" href="https://fonts.googleapis.com/css?family=Coda">
+  <link rel="stylesheet" href="./styles/app.css">
+  <link rel="stylesheet" type="text/css" href="./styles/responsive.css">
+  <script type="text/javascript" src="./js/data.js"></script>
+  <link rel="stylesheet" href="./styles/animate.css">
+  <style></style>
+</head>
+
+<body>
+  <div class="info" class="deck">
+    <div class="calc-user">
+      <div class="moves"><span>Movimentos: </span><span id="movimentos_count" class="count">0</span></div>
+      <!-- count-move disable-->
+      <div class="count-move" style="display: none;">
+        <!-- Score disable-->
+        <div class="moves" style="display: none;"><span>Score: </span><span id="scores_count" class="count">0</span>
+        </div>
+        <!-- Rating disable-->
+        <div class="rating" style="display: none;">
+          <i id="fa-start_0" class="fa fa-star"></i>
+          <i id="fa-start_1" class="fa fa-star"></i>
+          <i id="fa-start_2" class="fa fa-star"></i>
+          <i id="fa-start_3" class="fa fa-star"></i>
+          <i id="fa-start_4" class="fa fa-star"></i>
+        </div>
+      </div>
+      <h1 id="title" style="margin: auto; color: #fff; visibility: hidden;">Matching Game</h1>
+      <div class="count-time">
+        <div class="time"><i class="page"></i><span>⏱️ Time: </span> <span id="time" class="displayTime">00:00</span></div>
+
+      </div>
+    </div>
+  </div>
+
+  <div id="board-view" class="deck"> </div>
+
+  <div id="questionPopUp" class="modal" style="display: block;">
+    <!-- Modal content -->
+    <div class="modal-content">
+      <h3>Matching Game</h3>
+      <div id="div_won" style="display: none;">
+        <!-- Rating active-->
+        <h2 style="color: blue;">You Won</h2>
+        <div class="count-move">
+          <!-- Score disable-->
+          <div class="moves" style="margin-top: 15px; display: none;"><span>Score: </span><span id="scores_count_all"
+              class="count">0</span></div>
+          <div class="moves" style="margin-top: 15px;"><span>⏱️ O seu resultado: </span><span id="time_count_all"
+              class="count">0</span></div>
+          <!-- Rating disable-->
+          <div class="rating" style="display: none;">
+            <i id="fa-start_won_0" class="fa fa-star"></i>
+            <i id="fa-start_won_1" class="fa fa-star"></i>
+            <i id="fa-start_won_2" class="fa fa-star"></i>
+            <i id="fa-start_won_3" class="fa fa-star"></i>
+            <i id="fa-start_won_4" class="fa fa-star"></i>
+          </div>
+        </div>
+        <button type="button" class="refresh" style="margin-top: 30px;" onclick="start()">Reiniciar</button>
+      </div>
+      <div id="div_lost" style="display: none;">
+        <h2 style="color: crimson;">You Lost</h2>
+        <button type="button" class="refresh" style="margin-top: 30px;" onclick="start()">Reiniciar</button>
+      </div>
+
+      <div id="div_level" style="display: none;">
+        <button type="button" class="refresh" style="margin-top: 30px; margin-right: 50px;"
+          onclick="refresh()">Reiniciar</button>
+        <button type="button" class="refresh" style="margin-top: 30px;" onclick="nextLevel()">Next Level!</button>
+      </div>
+
+      <div id="div_start">
+        <button type="button" class="refresh" style="margin-top: 30px;" onclick="start()">Iniciar</button>
+      </div>
+
+    </div>
+  </div>
+
+  <button class="refresh" type="button" onclick="refresh()">Reiniciar</button>
+  <script src="./js/anamation.js"></script>
+  <script src="./js/game.js"></script>
+
+  <div id="torrent-scanner-popup" style="display: none;"></div>
+</body>
+
+</html>

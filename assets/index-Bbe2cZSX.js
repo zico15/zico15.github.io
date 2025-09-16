@@ -1,0 +1,2506 @@
+(function() {
+    const e = document.createElement("link").relList;
+    if (e && e.supports && e.supports("modulepreload")) return;
+    for (const r of document.querySelectorAll('link[rel="modulepreload"]')) n(r);
+    new MutationObserver(r => {
+        for (const s of r)
+            if (s.type === "childList")
+                for (const o of s.addedNodes) o.tagName === "LINK" && o.rel === "modulepreload" && n(o)
+    }).observe(document, {
+        childList: !0,
+        subtree: !0
+    });
+
+    function t(r) {
+        const s = {};
+        return r.integrity && (s.integrity = r.integrity), r.referrerPolicy && (s.referrerPolicy = r.referrerPolicy), r.crossOrigin === "use-credentials" ? s.credentials = "include" : r.crossOrigin === "anonymous" ? s.credentials = "omit" : s.credentials = "same-origin", s
+    }
+
+    function n(r) {
+        if (r.ep) return;
+        r.ep = !0;
+        const s = t(r);
+        fetch(r.href, s)
+    }
+})();
+const Ke = Symbol("refSubscriber");
+class D {
+    value;
+    root;
+    static #e = 0;
+    #t = [];
+    id = `${Math.random().toString(36).substring(2,4)}${D.#e++}`;
+    constructor(e, t) {
+        this.value = e, this.root = t
+    }
+    emit(e, t, n) {
+        if (e.target instanceof Function) e.target(t, n);
+        else {
+            const r = e.target.deref();
+            if (r === void 0) return this.#t = this.#t.filter(s => s !== e), !1;
+            typeof r[e.propertyName] == "function" ? r[e.propertyName](t, n) : r[e.propertyName] !== t && (r[e.propertyName] = t)
+        }
+        return !0
+    }
+    info() {
+        console.log("RefContainer info: ", this.value, "subscribers: ", this.#t)
+    }
+    emitAll(e, t, n) {
+        return this.#t.forEach(r => this.emit(r, t, n)), this.root && this.root.emitAll && this.root.emitAll("value", this.root.instance ? this.root.instance.value : this.root.value, n), t
+    }
+    getSubscriber(e, t) {
+        const n = {
+            subscriber: void 0,
+            index: -1
+        };
+        if (typeof e == "function") {
+            const r = this.#t.findIndex(s => s.target === e);
+            n.index = r, r !== -1 && (n.subscriber = this.#t[r])
+        } else {
+            const r = this.#t.findIndex(s => typeof s.target != "function" && s.target.deref() === e && s.propertyName === t);
+            n.index = r, r !== -1 && (n.subscriber = this.#t[r])
+        }
+        return n
+    }
+    subscribe(e, t, n) {
+        const r = this.getSubscriber(e, t);
+        if (t instanceof Function && (n = t), r.subscriber) return r.subscriber;
+        const s = {
+            target: e instanceof Function ? e : new WeakRef(e),
+            propertyName: typeof t == "string" ? t : "",
+            onUnsubscribe: n,
+            refSubscriber: Ke
+        };
+        return this.#t.push(s), typeof e != "function" && O.subscribe(e, typeof t == "string" ? t : "", this), s
+    }
+    listen(e, t) {
+        return this.subscribe(e, t)
+    }
+    unsubscribe(e, t) {
+        const n = this.getSubscriber(e, t);
+        return n.subscriber === void 0 ? !1 : (n.subscriber.onUnsubscribe?.(), this.#t = this.#t.filter((r, s) => s !== n.index), typeof e != "function" && O.unsubscribe(e, t), !0)
+    } [Symbol.toPrimitive](e) {
+        return e === "string" || e === "default" ? this.value : this.value.valueOf()
+    }
+    toString() {
+        return typeof this.value == "object" ? JSON.stringify(this.value) : this.value instanceof Object ? "[object Object]" : this.value.toString()
+    }
+    toJSON() {
+        try {
+            return JSON.parse(JSON.stringify(this.value))
+        } catch (e) {
+            return console.error(e), {}
+        }
+    }
+}
+class oe extends Set {
+    container = new D(this);
+    id;
+    constructor(e) {
+        super(), this.id = this.container.id, this.value = new Set(e), O.set(this.id, this)
+    }
+    emit(e, t) {
+        this.container.emitAll(e, t, this.valueOf())
+    }
+    subscribe(e, t, n) {
+        return this.container.emit(this.container.subscribe(e, t, n), this, this.valueOf())
+    }
+    listen(e, t) {
+        return this.container.subscribe(e, t) !== void 0
+    }
+    unsubscribe(e, t = "") {
+        return this.container.unsubscribe(e, t)
+    }
+    add(e) {
+        const t = this.valueOf(),
+            n = super.add(e);
+        return this.container.emitAll("add", this, t), n
+    }
+    delete(e) {
+        const t = this.valueOf(),
+            n = super.delete(e);
+        return this.container.emitAll("delete", this, t), n
+    }
+    clear() {
+        const e = this.valueOf();
+        super.clear(), this.container.emitAll("clear", this, e)
+    }
+    valueOf() {
+        return new Set(Array.from(this))
+    }
+    static get[Symbol.species]() {
+        return Set
+    }
+    get value() {
+        return this.container.value.valueOf()
+    }
+    set value(e) {
+        if (this !== e) {
+            super.clear();
+            for (const t of e) super.add(t);
+            this.emit("value", e)
+        }
+    }
+    toJSON() {
+        const e = {};
+        let t = 0;
+        for (const n of this.value) e[t++] = n;
+        return e
+    }
+}
+class V extends D {
+    root;
+    instance = {
+        value: null
+    };
+    constructor(e, t) {
+        super(e, t), this.root = t, this.value = Ye(e, this), Ve(e) ? V.createObject.bind(this)(this.value, e, this) : this.value = e
+    }
+    valueOf() {
+        return this.instance.value
+    }
+    static createObject(e, t, n) {
+        if (Object.getPrototypeOf(e) === Object.prototype)
+            for (const r in t) try {
+                if (Object.getOwnPropertyDescriptor(e, r)?.writable === !1 || Object.getOwnPropertyDescriptor(e, r)?.get || Object.getOwnPropertyDescriptor(e, r)?.set) continue;
+                if (t[r] === void 0 || t[r] === null) {
+                    e[r] = t[r];
+                    continue
+                }
+                if (t[r] instanceof Array) e[r] = new fe(t[r]);
+                else if (t[r] instanceof Set) e[r] = new oe(t[r]);
+                else if (t[r] instanceof Map) e[r] = new ue(t[r]);
+                else if (typeof t[r] == "string" || t[r] instanceof String) e[r] = new ce(t[r].valueOf());
+                else if (typeof t[r] == "number" || t[r] instanceof Number) e[r] = new le(t[r].valueOf());
+                else if (typeof t[r] == "boolean" || t[r] instanceof Boolean) e[r] = new ae(t[r].valueOf());
+                else if (!(t[r] instanceof Element)) {
+                    if (t[r] instanceof Object)
+                        if (Object.getPrototypeOf(e) === Object.prototype) {
+                            const s = new V(t[r], n.root || this);
+                            e[r] = s.value
+                        } else e[r] = t[r]
+                }
+                e[r] instanceof E && (e[r].container.root = n.root || this)
+            } catch {}
+    }
+    static applyObject(e, t, n) {
+        const r = Object.keys(e),
+            s = Object.keys(t),
+            o = r.filter(h => !s.includes(h)),
+            f = s.filter(h => r.includes(h)),
+            l = s.filter(h => !r.includes(h));
+        for (const h of o) s.includes(h) || delete e[h];
+        for (const h of f) e[h] instanceof E ? e[h].emit(h, t[h]) : !(e[h] instanceof Element) && e[h] instanceof Object && V.applyObject.bind(this)(e[h], t[h], n);
+        if (l.length === 0) return;
+        const C = {};
+        for (const h of l) C[h] = t[h];
+        V.createObject.bind(this)(e, C, n)
+    }
+    emitAll(e, t) {
+        super.emitAll(e, t, t)
+    }
+}
+
+function Qe(i, e, t, n, r) {
+    return i[e] instanceof E ? i[e].emit(e, t) : !(i[e] instanceof Element) && i[e] instanceof Object ? Object.getPrototypeOf(i[e]) === Object.prototype && V.applyObject(i[e], t, r) : t != null ? V.createObject(i, {
+        [e]: t
+    }, r) : Reflect.set(i, e, t, n), n
+}
+
+function Ve(i) {
+    return i ? typeof i != "object" ? !0 : Object.getPrototypeOf(i) === Object.prototype || Array.isArray(i) || i instanceof Map || i instanceof Set || i instanceof Number || i instanceof Boolean || i instanceof String : !1
+}
+
+function Ye(i, e) {
+    const t = new Proxy(i || {}, {
+        get(n, r, s) {
+            return r == "toString" ? JSON.stringify(i) : r == "toJSON" ? () => JSON.parse(JSON.stringify(i)) : r == "valueOf" ? JSON.parse(JSON.stringify(i)) : Reflect.get(n, r, s)
+        },
+        set(n, r, s, o) {
+            return s && s instanceof E && (s = s?.valueOf() || s), Ve(s) ? o = Qe(n, r, s, o, e) : o = Reflect.set(n, r, s, o), e.emitAll(r, s), o
+        }
+    });
+    return e.value = t, t
+}
+
+function E(i) {
+    if (i = deepCopy(i), typeof i == "string" || i instanceof String) return new ce(i.valueOf());
+    if (typeof i == "number" || i instanceof Number) return new le(i.valueOf());
+    if (typeof i == "boolean" || i instanceof Boolean) return new ae(i.valueOf());
+    if (i instanceof Array) return new fe(i);
+    if (i instanceof Set) return new oe(i);
+    if (i instanceof Map) return new ue(i);
+    const e = new V(i),
+        t = {
+            value: e.value,
+            subscribe: e.subscribe.bind(e),
+            listen: e.listen.bind(e),
+            unsubscribe: e.unsubscribe.bind(e),
+            toString: e.toString.bind(e),
+            toJSON: e.toJSON.bind(e),
+            valueOf: e.valueOf.bind(e),
+            id: e.id
+        };
+    return e.instance = t, Object.defineProperty(t, Symbol.iterator, {
+        value: function*() {
+            for (const n in t.value) yield t.value[n]?.valueOf() || t.value[n]
+        }
+    }), Object.defineProperty(t, "value", {
+        get() {
+            return e.value
+        },
+        set(n) {
+            V.applyObject(e.value, n, e), e.emitAll("value", n)
+        }
+    }), Object.setPrototypeOf(t, E.prototype), O.set(e.id, t), t
+}
+Object.defineProperty(E, Symbol.hasInstance, {
+    value: function(i) {
+        return !!i && typeof i == "object" && (i === E || Object.getPrototypeOf(i) === E.prototype || i instanceof ce || i instanceof le || i instanceof ae || i instanceof fe || i instanceof oe || i instanceof ue || i instanceof et)
+    }
+});
+class ae {
+    container;
+    id;
+    constructor(e) {
+        this.container = new D(e), this.id = this.container.id, O.set(this.id, this)
+    }
+    emit(e, t) {
+        if (this.value === t) return;
+        const n = this.valueOf();
+        this.container.emitAll(e, this.container.value = t.valueOf(), n)
+    }
+    subscribe(e, t, n) {
+        return this.container.emit(this.container.subscribe(e, t, n), this.value, this.value)
+    }
+    listen(e, t) {
+        return this.container.subscribe(e, t) !== void 0
+    }
+    unsubscribe(e, t = "") {
+        return this.container.unsubscribe(e, t)
+    } [Symbol.toPrimitive](e) {
+        return e === "boolean" || e === "default" ? this.value : this.valueOf()
+    }
+    static get[Symbol.species]() {
+        return Boolean
+    }
+    get value() {
+        return this.container.value.valueOf()
+    }
+    set value(e) {
+        this.emit("value", e)
+    }
+    valueOf() {
+        return this.value.valueOf()
+    }
+    toJSON() {
+        return this.container.root ? this.value : {
+            value: this.value
+        }
+    }
+    toString() {
+        return this.container.toString()
+    }
+}
+class le {
+    container;
+    id;
+    constructor(e) {
+        this.container = new D(e), this.id = this.container.id, O.set(this.id, this)
+    }
+    emit(e, t) {
+        if (this.value === t.valueOf()) return;
+        const n = this.valueOf();
+        this.container.emitAll(e, this.container.value = t.valueOf(), n)
+    }
+    subscribe(e, t, n) {
+        return this.container.emit(this.container.subscribe(e, t, n), this.value, this.valueOf())
+    }
+    listen(e, t) {
+        return this.container.subscribe(e, t) !== void 0
+    }
+    unsubscribe(e, t = "") {
+        return this.container.unsubscribe(e, t)
+    }
+    get value() {
+        return this.container.value
+    }
+    set value(e) {
+        this.emit("value", e)
+    }
+    valueOf() {
+        return this.value.valueOf()
+    }
+    toString(e) {
+        return this.value.toString(e)
+    }
+    toFixed(e) {
+        return this.value.toFixed(e)
+    }
+    toExponential(e) {
+        return this.value.toExponential(e)
+    }
+    toPrecision(e) {
+        return this.value.toPrecision(e)
+    }
+    toLocaleString(e, t) {
+        return this.value.toLocaleString(e, t)
+    } [Symbol.toPrimitive](e) {
+        return e === "number" || e === "default" ? this.value : this.valueOf()
+    }
+    static get[Symbol.species]() {
+        return Number
+    }
+    toJSON() {
+        return this.container.root ? this.value : {
+            value: this.value
+        }
+    }
+}
+class ce {
+    id;
+    container;
+    constructor(e) {
+        this.container = new D(e), this.id = this.container.id, O.set(this.id, this)
+    }
+    subscribe(e, t, n) {
+        return this.container.emit(this.container.subscribe(e, t, n), this.value, this.valueOf())
+    }
+    listen(e, t) {
+        return this.container.subscribe(e, t) !== void 0
+    }
+    unsubscribe(e, t = "") {
+        return this.container.unsubscribe(e, t)
+    }
+    get value() {
+        return this.container.value.valueOf()
+    }
+    set value(e) {
+        this.emit("value", e)
+    }
+    emit(e, t) {
+        if (this.container.value === t.valueOf()) return;
+        const n = this.container.valueOf();
+        this.container.emitAll(e, this.container.value = t.valueOf(), n)
+    } [Symbol.toPrimitive](e) {
+        return this.container.toString()
+    }
+    static get[Symbol.species]() {
+        return String
+    }
+    valueOf() {
+        return this.container.value.toString()
+    }
+    toString() {
+        return this.container.toString()
+    }
+    toJSON() {
+        return this.container.root ? this.value : {
+            value: this.value
+        }
+    }
+    get length() {
+        return this.container.value.length
+    }
+    equals(e) {
+        return this.container.valueOf() === e.valueOf()
+    } [Symbol.iterator]() {
+        return this.container.value[Symbol.iterator]()
+    }
+    charAt(e) {
+        return this.container.value.charAt(e)
+    }
+    charCodeAt(e) {
+        return this.container.value.charCodeAt(e)
+    }
+    codePointAt(e) {
+        return this.container.value.codePointAt(e)
+    }
+    concat(...e) {
+        return this.container.value.concat(...e)
+    }
+    indexOf(e, t) {
+        return this.container.value.indexOf(e, t)
+    }
+    lastIndexOf(e, t) {
+        return this.container.value.lastIndexOf(e, t)
+    }
+    includes(e, t) {
+        return this.container.value.includes(e, t)
+    }
+    startsWith(e, t) {
+        return this.container.value.startsWith(e, t)
+    }
+    endsWith(e, t) {
+        return this.container.value.endsWith(e, t)
+    }
+    slice(e, t) {
+        return this.container.value.slice(e, t)
+    }
+    substring(e, t) {
+        return this.container.value.substring(e, t)
+    }
+    substr(e, t) {
+        return this.container.value.substr(e, t)
+    }
+    match(e) {
+        return this.container.value.match(e)
+    }
+    matchAll(e) {
+        return this.container.value.matchAll(e)
+    }
+    replace(e, t) {
+        return this.container.value.replace(e, t)
+    }
+    replaceAll(e, t) {
+        return this.container.value.replaceAll(e, t)
+    }
+    search(e) {
+        return this.container.value.search(e)
+    }
+    split(e, t) {
+        return this.container.value.split(e, t)
+    }
+    repeat(e) {
+        return this.container.value.repeat(e)
+    }
+    padStart(e, t) {
+        return this.container.value.padStart(e, t)
+    }
+    padEnd(e, t) {
+        return this.container.value.padEnd(e, t)
+    }
+    trim() {
+        return this.container.value.trim()
+    }
+    trimStart() {
+        return this.container.value.trimStart()
+    }
+    trimEnd() {
+        return this.container.value.trimEnd()
+    }
+    trimLeft() {
+        return this.container.value.trimLeft()
+    }
+    trimRight() {
+        return this.container.value.trimRight()
+    }
+    toLowerCase() {
+        return this.container.value.toLowerCase()
+    }
+    toUpperCase() {
+        return this.container.value.toUpperCase()
+    }
+    toLocaleLowerCase(e) {
+        return this.container.value.toLocaleLowerCase(e)
+    }
+    toLocaleUpperCase(e) {
+        return this.container.value.toLocaleUpperCase(e)
+    }
+    normalize(e) {
+        return this.container.value.normalize(e)
+    }
+    localeCompare(e, t, n) {
+        return this.container.value.localeCompare(e, t, n)
+    }
+    anchor(e) {
+        return this.container.value.anchor(e)
+    }
+    big() {
+        return this.container.value.big()
+    }
+    blink() {
+        return this.container.value.blink()
+    }
+    bold() {
+        return this.container.value.bold()
+    }
+    fixed() {
+        return this.container.value.fixed()
+    }
+    fontcolor(e) {
+        return this.container.value.fontcolor(e)
+    }
+    fontsize(e) {
+        return this.container.value.fontsize(e.toString())
+    }
+    italics() {
+        return this.container.value.italics()
+    }
+    link(e) {
+        return this.container.value.link(e)
+    }
+    small() {
+        return this.container.value.small()
+    }
+    strike() {
+        return this.container.value.strike()
+    }
+    sub() {
+        return this.container.value.sub()
+    }
+    sup() {
+        return this.container.value.sup()
+    }
+}
+class ue extends Map {
+    container = new D(this);
+    id;
+    constructor(e) {
+        super(), this.id = this.container.id, O.set(this.id, this), this.value = new Map(e)
+    }
+    emit(e, t) {
+        const n = this.valueOf();
+        this.container.emitAll(e, t, n)
+    }
+    subscribe(e, t, n) {
+        return this.container.emit(this.container.subscribe(e, t, n), this, this.valueOf())
+    }
+    listen(e, t) {
+        return this.container.subscribe(e, t) !== void 0
+    }
+    unsubscribe(e, t = "") {
+        return this.container.unsubscribe(e, t)
+    }
+    set(e, t) {
+        const n = this.valueOf(),
+            r = super.set(e, t);
+        return this.container.emitAll("set", this, n), r
+    }
+    delete(e) {
+        const t = this.valueOf(),
+            n = super.delete(e);
+        return this.container.emitAll("delete", this, t), n
+    }
+    clear() {
+        const e = this.valueOf();
+        super.clear(), this.container.emitAll("clear", this, e)
+    }
+    valueOf() {
+        return new Map(Array.from(this))
+    }
+    static get[Symbol.species]() {
+        return Map
+    }
+    get value() {
+        return this.container.value.valueOf()
+    }
+    set value(e) {
+        if (this !== e) {
+            super.clear();
+            for (const [t, n] of e) super.set(t, n);
+            this.emit("value", e)
+        }
+    }
+    toJSON() {
+        const e = {};
+        for (const [t, n] of this.value) e[t] = n;
+        return e
+    }
+}
+class fe extends Array {
+    container;
+    id;
+    constructor(e) {
+        super(...e), this.container = new D(this), this.id = this.container.id, O.set(this.id, this)
+    }
+    emit(e, t) {
+        const n = this.valueOf();
+        this.container.emitAll(e, t, n)
+    }
+    subscribe(e, t, n) {
+        return this.container.emit(this.container.subscribe(e, t, n), this, this.valueOf())
+    }
+    listen(e, t) {
+        return this.container.subscribe(e, t) !== void 0
+    }
+    unsubscribe(e, t = "") {
+        return this.container.unsubscribe(e, t)
+    }
+    push(...e) {
+        const t = this.valueOf(),
+            n = super.push(...e);
+        return this.container.emitAll("push", this, t), n
+    }
+    pop() {
+        const e = this.valueOf(),
+            t = super.pop();
+        return this.container.emitAll("pop", this, e), t
+    }
+    shift() {
+        const e = this.valueOf(),
+            t = super.shift();
+        return this.container.emitAll("shift", this, e), t
+    }
+    unshift(...e) {
+        const t = this.valueOf(),
+            n = super.unshift(...e);
+        return this.container.emitAll("unshift", this, t), n
+    }
+    splice(e, t = 0, ...n) {
+        const r = this.valueOf(),
+            s = super.splice(e, t, ...n);
+        return this.container.emitAll("splice", this, r), s
+    }
+    sort(e) {
+        const t = this.valueOf();
+        return super.sort(e), this.container.emitAll("sort", this, t), this
+    }
+    reverse() {
+        const e = this.valueOf(),
+            t = super.reverse();
+        return this.container.emitAll("reverse", this, e), t
+    }
+    fill(e, t, n) {
+        const r = this.valueOf();
+        return super.fill(e, t, n), this.container.emitAll("fill", this, r), this
+    }
+    copyWithin(e, t, n) {
+        const r = this.valueOf();
+        return super.copyWithin(e, t, n), this.container.emitAll("copyWithin", this, r), this
+    }
+    set length(e) {
+        const t = this.length;
+        super.length = e, this.container.emitAll("length", this, t)
+    }
+    clear() {
+        const e = this.length;
+        super.length = 0, this.container.emitAll("clear", this, e)
+    }
+    insert(e, ...t) {
+        const n = this.valueOf();
+        return super.splice(e, 0, ...t), this.container.emitAll("insert", this, n), this.length
+    }
+    removeItem(e) {
+        const t = super.indexOf(e);
+        if (t === -1) return e;
+        const n = this.valueOf();
+        return super.splice(t, 1), this.container.emitAll("removeValue", this, n), e
+    }
+    remove(e, t = 1) {
+        const n = this.valueOf();
+        return super.splice(e, t), this.container.emitAll("remove", this, n), this.length
+    }
+    valueOf() {
+        return Array.from(this)
+    }
+    get length() {
+        return super.length
+    }
+    static syncComponentWithList(e, t) {
+        const n = Array.from(t.children);
+        n.forEach(r => {
+            e.includes(r) || t.removeChild(r)
+        }), e.forEach(r => {
+            r instanceof Node && !n.includes(r) && t.appendChild(r)
+        }), e.forEach((r, s) => {
+            r instanceof Node && t.children[s] !== r && t.insertBefore(r, t.children[s] || null)
+        })
+    }
+    get[Symbol.toStringTag]() {
+        return "refList"
+    }
+    static get[Symbol.species]() {
+        return Array
+    }
+    get value() {
+        return this.container.value.valueOf()
+    }
+    set value(e) {
+        this !== e && (super.splice(0, this.length, ...e), this.emit("value", e))
+    }
+    toJSON() {
+        return this.value
+    }
+}
+class et {
+    refKey;
+    #e;
+    #t = [];
+    constructor(e) {
+        this.refKey = e, this.#e = O.get(e), this.#e || O.onCreated(e, t => {
+            this.#e = t;
+            for (const n of this.#t) this.#e?.subscribe(n.target, n.propertyName, n.onUnsubscribe);
+            this.#t = void 0
+        })
+    }
+    get status() {
+        return O.getStatus(this.refKey)
+    }
+    get active() {
+        return !!this.#e
+    }
+    get ref() {
+        return this.#e
+    }
+    emit(e, t) {
+        this.ref && (this.ref.value = t)
+    }
+    subscribe(e, t, n) {
+        return this.ref ? this.ref.subscribe(e, t, n) : (this.#t.push({
+            target: e,
+            propertyName: t,
+            onUnsubscribe: n
+        }), !0)
+    }
+    listen(e, t) {
+        return this.subscribe(e, t)
+    }
+    unsubscribe(e, t = "") {
+        return this.ref ? this.ref.unsubscribe(e, t) : (this.#t = this.#t.filter(n => n.target !== e && n.propertyName !== t), !0)
+    }
+    get value() {
+        return this.ref?.value
+    }
+    set value(e) {
+        this.ref && (this.ref.value = e)
+    }
+    valueOf() {
+        return this.ref?.valueOf()
+    }
+    toJSON() {
+        return this.ref?.toJSON() || {}
+    }
+    toString() {
+        return "this.ref?.toString() || "
+    }
+}
+const tt = Symbol("computed");
+class Ce extends Set {
+    [tt] = !0;
+    elements = new Map;
+    put(e) {
+        if (e && e instanceof E) return this.add(e), e.value
+    }
+    cache(e) {
+        return {
+            key: e,
+            controller: this
+        }
+    }
+    setCache(e, t) {
+        this.elements.set(e, new WeakRef(t))
+    }
+    getCache(e) {
+        const t = this.elements.get(e);
+        return t && !t.deref() && this.elements.delete(e), t ? t.deref() : void 0
+    }
+    clone() {
+        const e = new Ce;
+        for (const t of this) e.add(t);
+        return e
+    }
+}
+
+function nt(i, ...e) {
+    if (typeof i != "function") throw new Error("computed: fn must be a function");
+    const t = new Ce;
+    for (const s of e) t.put(s);
+    const n = E(i(t)),
+        r = t.length > 0 ? () => i(t) : () => {
+            const s = t.clone();
+            t.clear(), n.value = i(t);
+            const o = s.size > 0 ? [...s].filter(l => !t.has(l)) : [],
+                f = t.size > 0 ? [...t].filter(l => !s.has(l)) : [];
+            for (const l of o) l.unsubscribe(r);
+            for (const l of f) l.listen(r)
+        };
+    for (const s of t) s.listen(r);
+    return n
+}
+const _ = new WeakMap;
+class O {
+    static refs = new Map;
+    static onCreatedCallbacks = new Map;
+    static refsStatus = new Map;
+    static onCreated(e, t) {
+        O.onCreatedCallbacks.set(e, [...O.onCreatedCallbacks.get(e) || [], t])
+    }
+    static get(e) {
+        return O.refs.get(e)?.deref()
+    }
+    static getStatus(e) {
+        return O.refsStatus.has(e) || O.refsStatus.set(e, E("0")), O.refsStatus.get(e)
+    }
+    static set(e, t) {
+        O.refs.set(e, new WeakRef(t));
+        for (const n of O.onCreatedCallbacks.get(e) || []) n(t);
+        O.onCreatedCallbacks.delete(e)
+    }
+    static unsubscribe(e, t) {
+        if (!_.has(e)) return;
+        const n = _.get(e),
+            r = n.get(t);
+        r && r.deref()?.unsubscribe(e, t), n.has(t) && n.delete(t)
+    }
+    static unsubscribeAll(e) {
+        if (!_.has(e)) return;
+        const t = _.get(e);
+        _.delete(e);
+        for (const [n, r] of t) r.deref()?.unsubscribe(e, n)
+    }
+    static subscribe(e, t, n) {
+        _.has(e) || _.set(e, new Map);
+        const r = _.get(e);
+        if (r.has(t)) {
+            const s = r.get(t);
+            s && s.deref()?.unsubscribe(e, t)
+        }
+        r.set(t, new WeakRef(n))
+    }
+}
+globalThis.Ref = O;
+async function it() {
+    let i = "Other";
+    if (navigator?.userAgentData) i = (await navigator.userAgentData.getHighEntropyValues(["platform"])).platform;
+    else {
+        const e = navigator.userAgent.toLowerCase(),
+            t = navigator.platform.toLowerCase();
+        if (e.includes("win")) return "Windows";
+        if (e.includes("mac") || t.includes("mac")) return "macOS";
+        if (e.includes("linux")) return "Linux";
+        if (/android/.test(e)) return "Android";
+        if (/iphone|ipad|ipod/.test(e)) return "iOS"
+    }
+    return i
+}
+class rt {
+    translateData;
+    component = void 0;
+    #e = void 0;
+    data = {
+        theme: document.documentElement["data-theme"],
+        language: document.documentElement.lang
+    };
+    constructor() {
+        const e = localStorage.getItem("__app__");
+        e && (this.data = JSON.parse(e), this.data.language = this.data.language, this.data.theme = this.data.theme || document.documentElement["data-theme"] || "light")
+    }
+    get theme() {
+        return this.data.theme
+    }
+    set theme(e) {
+        this.data.theme = e, document.querySelector("html")?.setAttribute("data-theme", e), localStorage.setItem("__app__", JSON.stringify(this.data))
+    }
+    set language(e) {
+        this.data.language != e && (this.data.language = e, localStorage.setItem("__app__", JSON.stringify(this.data)), y.reload())
+    }
+    get language() {
+        return this.data.language
+    }
+    setPage(e) {
+        this.component && this.component.remove(), Array.from(document.body.querySelectorAll("[main-page]")).map(n => n.remove()), document.body.querySelector;
+        const t = document.createDocumentFragment();
+        return e && e.setAttribute("main-page", ""), t.appendChild(e), document.body.appendChild(t), this.component = e, e
+    }
+    get root() {
+        return document.documentElement
+    }
+    get body() {
+        return document.body
+    }
+    get head() {
+        return document.head
+    }
+    get location() {
+        return window.location
+    }
+    get title() {
+        return document.title
+    }
+    set title(e) {
+        document.title = e
+    }
+    setTitle(e) {
+        document.title = e
+    }
+    get style() {
+        return document.documentElement.style
+    }
+    set translate(e) {
+        this.translateData = e
+    }
+    get translate() {
+        return this.translateData
+    }
+    get platform() {
+        return this.#e ? Promise.resolve(this.#e) : it().then(e => (this.#e = e, e))
+    }
+    getCookie(e) {
+        const n = ("; " + document.cookie).split("; " + e + "=");
+        if (n.length === 2) {
+            const r = n.pop().split(";").shift();
+            try {
+                return JSON.parse(r)
+            } catch {
+                return r
+            }
+        }
+        return null
+    }
+    setCookie(e, t, n) {
+        const r = new Date;
+        r.setTime(r.getTime() + n * 24 * 60 * 60 * 1e3), typeof t == "object" && (t = JSON.stringify(t)), document.cookie = `${e}=${t}; expires=${r.toUTCString()}; path=/`
+    }
+    removeCookie(e) {
+        document.cookie = `${e}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
+    }
+    getLocalStorage(e) {
+        return localStorage.getItem(e)
+    }
+    setLocalStorage(e, t) {
+        localStorage.setItem(e, t)
+    }
+    removeLocalStorage(e) {
+        localStorage.removeItem(e)
+    }
+    requestFullscreen() {
+        document.documentElement.requestFullscreen ? document.documentElement.requestFullscreen() : document.documentElement.mozRequestFullScreen ? document.documentElement.mozRequestFullScreen() : document.documentElement.webkitRequestFullscreen ? document.documentElement.webkitRequestFullscreen() : document.documentElement.msRequestFullscreen && document.documentElement.msRequestFullscreen()
+    }
+    exitFullscreen() {
+        document.exitFullscreen ? document.exitFullscreen() : document.mozCancelFullScreen ? document.mozCancelFullScreen() : document.webkitExitFullscreen ? document.webkitExitFullscreen() : document.msExitFullscreen && document.msExitFullscreen()
+    }
+}
+const se = new rt;
+class P extends Event {
+    data = [];
+    isInit = !1;
+    static events = new Map;
+    eventsListener = new Map;
+    static serialize = "event-component-";
+    constructor(e, t) {
+        super(P.serialize + e, t)
+    }
+    static emitEvent(e, ...t) {
+        const n = P.createEventBase(e, ...t);
+        return n ? (t.length > 0 && (n.data = t), n.isInit = !0, document.dispatchEvent(n)) : !1
+    }
+    static createEventBase(e, ...t) {
+        if (e == null || e === "") return null;
+        let n = P.events.get(e);
+        return n || (n = new P(e), P.events.set(e, n), n.data = t, n.isInit = t.length > 0, n)
+    }
+    static createEvent(e, ...t) {
+        return P.createEventBase(e, ...t) !== null
+    }
+    static addEventListener(e, t, n, r) {
+        const s = P.createEventBase(t);
+        if (s) {
+            const o = function(l) {
+                n(...l.data)
+            };
+            s.isInit && n(...s.data);
+            const f = s.eventsListener.get(e) || [];
+            f.push(o), s.eventsListener.set(e, f), document.addEventListener(s.type, o, r)
+        }
+    }
+    static removeEventListener(e, t) {
+        const n = P.events.get(t);
+        if (n) {
+            const r = n.eventsListener.get(e);
+            if (r)
+                for (let s of r) document.removeEventListener(n.type, s)
+        }
+    }
+    static removeEventListeners(e) {
+        for (let t of P.events.keys()) P.removeEventListener(e, t)
+    }
+    static deleteEvent(e) {
+        const t = P.events.get(e);
+        if (t) {
+            for (let n of t.eventsListener.keys()) P.removeEventListeners(n);
+            P.events.delete(e)
+        }
+    }
+}
+if (/^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent) || /iP(hone|od|ad)/.test(navigator.userAgent)) {
+    let ye = function(a) {
+        const c = me.get(a);
+        Me(c.querySelectorAll(this), a.isConnected)
+    };
+    var kt = ye;
+    const {
+        keys: i
+    } = Object, e = !0, t = !1, n = "querySelectorAll", r = "querySelectorAll", {
+        document: s,
+        Element: o,
+        MutationObserver: f,
+        Set: l,
+        WeakMap: C
+    } = self, h = a => r in a, {
+        filter: p
+    } = [];
+    var Ne = a => {
+        const c = new C,
+            g = (m, S) => {
+                let L;
+                if (S)
+                    for (let b, $ = (j => j.matches || j.webkitMatchesSelector || j.msMatchesSelector)(m), W = 0, {
+                            length: ve
+                        } = u; W < ve; W++) $.call(m, b = u[W]) && (c.has(m) || c.set(m, new l), L = c.get(m), L.has(b) || (L.add(b), a.handle(m, S, b)));
+                else c.has(m) && (L = c.get(m), c.delete(m), L.forEach(b => {
+                    a.handle(m, S, b)
+                }))
+            },
+            d = (m, S = !0) => {
+                for (let L = 0, {
+                        length: b
+                    } = m; L < b; L++) g(m[L], S)
+            },
+            {
+                query: u
+            } = a,
+            M = a.root || s,
+            A = ((m, S = document, L = MutationObserver, b = ["*"]) => {
+                const $ = (j, U, R, F, B, ie) => {
+                        for (const T of j)(ie || n in T) && (B ? R.has(T) || (R.add(T), F.delete(T), m(T, B)) : F.has(T) || (F.add(T), R.delete(T), m(T, B)), ie || $(T[n](U), U, R, F, B, e))
+                    },
+                    W = new L(j => {
+                        if (b.length) {
+                            const U = b.join(","),
+                                R = new Set,
+                                F = new Set;
+                            for (const {
+                                    addedNodes: B,
+                                    removedNodes: ie
+                                }
+                                of j) $(ie, U, R, F, t, t), $(B, U, R, F, e, t)
+                        }
+                    }),
+                    {
+                        observe: ve
+                    } = W;
+                return (W.observe = j => ve.call(W, j, {
+                    subtree: e,
+                    childList: e
+                }))(S), W
+            })(g, M, f, u),
+            {
+                attachShadow: N
+            } = o.prototype;
+        return N && (o.prototype.attachShadow = function(m) {
+            const S = N.call(this, m);
+            return A.observe(S), S
+        }), u.length && d(M[r](u)), {
+            drop: m => {
+                for (let S = 0, {
+                        length: L
+                    } = m; S < L; S++) c.delete(m[S])
+            },
+            flush: () => {
+                const m = A.takeRecords();
+                for (let S = 0, {
+                        length: L
+                    } = m; S < L; S++) d(p.call(m[S].removedNodes, h), !1), d(p.call(m[S].addedNodes, h), !0)
+            },
+            observer: A,
+            parse: d
+        }
+    };
+    const {
+        customElements: v,
+        document: w,
+        Element: k,
+        MutationObserver: de,
+        Object: Fe,
+        Promise: $e,
+        Map: X,
+        Set: Be,
+        WeakMap: Ge,
+        Reflect: Ze
+    } = self, {
+        createElement: Ae
+    } = w, {
+        define: qe,
+        get: He,
+        upgrade: Je
+    } = v, {
+        construct: Ue
+    } = Ze || {
+        construct(a) {
+            return a.call(this)
+        }
+    }, {
+        defineProperty: Pe,
+        getOwnPropertyNames: ze,
+        setPrototypeOf: K
+    } = Fe, me = new Ge, pe = new Be, Q = new X, Y = new X, ke = new X, ee = new X, Le = [], te = [], Ie = a => ee.get(a) || He.call(v, a), {
+        parse: Me
+    } = Ne({
+        query: te,
+        handle: (a, c, g) => {
+            const d = ke.get(g);
+            if (c && !d.isPrototypeOf(a)) {
+                const M = (A => {
+                    const N = i(A),
+                        m = [],
+                        S = new Set,
+                        {
+                            length: L
+                        } = N;
+                    for (let b = 0; b < L; b++) {
+                        m[b] = A[N[b]];
+                        try {
+                            delete A[N[b]]
+                        } catch {
+                            S.add(b)
+                        }
+                    }
+                    return () => {
+                        for (let b = 0; b < L; b++) S.has(b) || (A[N[b]] = m[b])
+                    }
+                })(a);
+                ne = K(a, d);
+                try {
+                    new d.constructor
+                } finally {
+                    ne = null, M()
+                }
+            }
+            const u = (c ? "" : "dis") + "connectedCallback";
+            u in d && a[u]()
+        }
+    }), {
+        parse: Xe
+    } = Ne({
+        query: Le,
+        handle(a, c) {
+            me.has(a) && (c ? pe.add(a) : pe.delete(a), te.length && ye.call(te, a))
+        }
+    }), {
+        attachShadow: xe
+    } = k.prototype;
+    xe && (k.prototype.attachShadow = function(a) {
+        const c = xe.call(this, a);
+        return me.set(this, c), c
+    });
+    const ge = a => {
+            if (!Y.has(a)) {
+                let c, g = new $e(d => {
+                    c = d
+                });
+                Y.set(a, {
+                    $: g,
+                    _: c
+                })
+            }
+            return Y.get(a).$
+        },
+        be = ((a, c) => {
+            const g = u => {
+                    for (let M = 0, {
+                            length: A
+                        } = u; M < A; M++) d(u[M])
+                },
+                d = ({
+                    target: u,
+                    attributeName: M,
+                    oldValue: A
+                }) => {
+                    u.attributeChangedCallback(M, A, u.getAttribute(M))
+                };
+            return (u, M) => {
+                const {
+                    observedAttributes: A
+                } = u.constructor;
+                return A && a(M).then(() => {
+                    new c(g).observe(u, {
+                        attributes: !0,
+                        attributeOldValue: !0,
+                        attributeFilter: A
+                    });
+                    for (let N = 0, {
+                            length: m
+                        } = A; N < m; N++) u.hasAttribute(A[N]) && d({
+                        target: u,
+                        attributeName: A[N],
+                        oldValue: null
+                    })
+                }), u
+            }
+        })(ge, de);
+    let ne = null;
+    ze(self).filter(a => /^HTML.*Element$/.test(a)).forEach(a => {
+        const c = self[a];
+
+        function g() {
+            const {
+                constructor: d
+            } = this;
+            if (!Q.has(d)) throw new TypeError("Illegal constructor");
+            const {
+                is: u,
+                tag: M
+            } = Q.get(d);
+            if (u) {
+                if (ne) return be(ne, u);
+                const A = Ae.call(w, M);
+                return A.setAttribute("is", u), be(K(A, d.prototype), u)
+            }
+            return Ue.call(this, c, [], d)
+        }
+        K(g, c), Pe(g.prototype = c.prototype, "constructor", {
+            value: g
+        }), Pe(self, a, {
+            value: g
+        })
+    }), w.createElement = function(a, c) {
+        const g = c && c.is;
+        if (g) {
+            const u = ee.get(g);
+            if (u && Q.get(u).tag === a) return new u
+        }
+        const d = Ae.call(w, a);
+        return g && d.setAttribute("is", g), d
+    }, v.get = Ie, v.whenDefined = ge, v.upgrade = function(a) {
+        const c = a.getAttribute("is");
+        if (c) {
+            const g = ee.get(c);
+            if (g) return void be(K(a, g.prototype), c)
+        }
+        Je.call(v, a)
+    }, v.define = function(a, c, g) {
+        if (Ie(a)) throw new Error(`'${a}' has already been defined as a custom element`);
+        let d;
+        const u = g && g.extends;
+        Q.set(c, u ? {
+            is: a,
+            tag: u
+        } : {
+            is: "",
+            tag: a
+        }), u ? (d = `${u}[is="${a}"]`, ke.set(d, c.prototype), ee.set(a, c), te.push(d)) : (qe.apply(v, arguments), Le.push(d = a)), ge(a).then(() => {
+            u ? (Me(w.querySelectorAll(d)), pe.forEach(ye, [d])) : Xe(w.querySelectorAll(d))
+        }), Y.get(a)._(c)
+    }
+}
+const st = Symbol("styleRef"),
+    Te = Symbol("variantAll"),
+    G = new Map,
+    re = new Map,
+    De = {
+        defineElement(i, e, t) {
+            I.mergeVariant(e, Object.getPrototypeOf(e.prototype).constructor), customElements.define(i, e, t)
+        },
+        createElement: (i, e, ...t) => {
+            const n = i?.prototype instanceof HTMLElement;
+            if (typeof i == "string" || n) {
+                if (i === "fragment") {
+                    const w = document.createDocumentFragment();
+                    for (const k of t) Array.isArray(k) ? w.append(...k) : k instanceof Node && w.append(k);
+                    return w
+                }
+                const r = e?.key,
+                    s = r && typeof r == "object" && r.controller && r.controller.getCache && r.controller.setCache;
+                if (s) {
+                    const w = r.controller.getCache(r.key);
+                    if (w) return w
+                }
+                const o = e?.onInit,
+                    f = e?.style,
+                    l = e?.ref,
+                    C = e?.className || e?.class;
+                delete e?.className, delete e?.class, delete e?.onInit, delete e?.ref, delete e?.key, f && (e.style = {});
+                const h = e || {},
+                    p = n ? new i(h) : document.createElement(i);
+                s && r.controller.setCache(r.key, p), f && p.setStyle(f), C && p.addClassName(C), l && l(p), I.applyProps(p, h);
+                const v = (w, k) => {
+                    k instanceof E ? w.append(k) : Array.isArray(k) ? k.forEach(de => v(w, de)) : k instanceof Node ? w.appendChild(k) : k != null && w.appendChild(document.createTextNode(k.toString()))
+                };
+                return t.forEach(w => v(p, w)), o && o(), p
+            }
+            return i({
+                ...e,
+                children: t
+            })
+        },
+        createFragment: (...i) => {
+            const e = document.createDocumentFragment();
+            return e.append(...i), e
+        },
+        computed: nt,
+        Fragment: "fragment"
+    };
+globalThis.TypeComposer = De;
+class I extends HTMLElement {
+    static TAG = "tc-component";
+    constructor(e) {
+        super(), I.applyProps(this, e)
+    }
+    static async applyProps(e, t, n = !1) {
+        if (!Object.hasOwn(e.style, "styleRef")) {
+            const s = e.style;
+            s.styleRef = st;
+            const o = new Proxy(s, {
+                get(f, l) {
+                    const C = Reflect.get(f, l);
+                    return typeof C == "function" ? C.bind(f) : C
+                },
+                set(f, l, C) {
+                    return C instanceof E ? C.subscribe(f, l) : Reflect.set(f, l, C), !0
+                }
+            });
+            Object.defineProperty(e, "style", {
+                get: () => o
+            })
+        }
+        if (t) {
+            for (const [s, o] of Object.entries(t))
+                if (o != null) switch (s) {
+                    case "key":
+                        e.key = o;
+                        break;
+                    case "onInit":
+                        typeof o == "function" && (e.onInit = () => o());
+                        break;
+                    case "style":
+                        e.setStyle(o);
+                        break;
+                    case "itemLoading":
+                        e.setAttribute("item-loading", o);
+                        break;
+                    case "children":
+                        Array.isArray(o) ? e.append(...o) : e.append(o);
+                        break;
+                    case "for":
+                        e.setAttribute("for", o);
+                        break;
+                    case "className":
+                        e.addClassName(o);
+                        break;
+                    case "text":
+                        e.innerText = o;
+                        break;
+                    case "html":
+                        e.innerHTML = o;
+                        break;
+                    case "style":
+                        for (const [f, l] of Object.entries(o)) e.style[f] = l;
+                        break;
+                    default:
+                        if (s in e && o) try {
+                            e[s] = o, o === void 0 && e.removeAttribute(s)
+                        } catch {}
+                }
+        }
+    }
+    static initComponent(e, t) {
+        if (e.constructor === t) {
+            if (e?.template && typeof e.template == "function") {
+                const n = e.template();
+                n && e.append(n)
+            }
+            e?.onInit()
+        }
+    }
+    static createElement(e) {
+        const t = document.createElement("div");
+        return t.innerHTML = e, t?.children[0] || t
+    }
+    static setVariant(e, t, n) {
+        G.has(e) || G.set(e, new Map);
+        const r = G.get(e);
+        r && r.set(t, n)
+    }
+    static getVariant(e, t) {
+        const n = G.get(e);
+        let r;
+        if (n && (r = n.get(t)), !r) {
+            const s = re.get(e);
+            if (!s) return r;
+            const o = s.get(t) || s.get(Te);
+            if (o) return I.getVariant(o, t)
+        }
+        return r
+    }
+    static getVariants(e) {
+        const t = G.get(e);
+        return t ? Array.from(t.keys()) : []
+    }
+    static removeVariant(e, t) {
+        const n = G.get(e);
+        n && n.delete(t)
+    }
+    static mergeVariant(e, t, ...n) {
+        re.has(e) || re.set(e, new Map);
+        const r = re.get(e);
+        if (r)
+            if (n && n.length)
+                for (const s of n) r.set(s, t);
+            else r.set(Te, t)
+    }
+    static lazyLoad(e, t) {
+        const n = new(t?.component || I);
+        return e().then(r => {
+            const s = r.default,
+                o = n.parentElement;
+            o && o.replaceChild(new s(t?.props), n)
+        }), n
+    }
+}
+globalThis.Component = I;
+// De.defineElement(I.TAG, I);
+customElements.define(I.TAG, I);
+const je = i => i && typeof i == "object" && (i instanceof ce || i instanceof le || i instanceof ae || i instanceof fe || i instanceof ue || i instanceof oe),
+    he = (i, e, ...t) => {
+        je(e) && (e = e.valueOf());
+        for (let n = 0; n < t.length; n++) je(t[n]) && (t[n] = t[n].valueOf());
+        i(e, ...t)
+    },
+    ot = console.log;
+console.log = function(i, ...e) {
+    he(ot, i, ...e)
+};
+const at = console.error;
+console.error = function(i, ...e) {
+    he(at, i, ...e)
+};
+const lt = console.warn;
+console.warn = function(i, ...e) {
+    he(lt, i, ...e)
+};
+const ct = console.info;
+console.info = function(i, ...e) {
+    he(ct, i, ...e)
+};
+
+function Z(i, e = new WeakMap) {
+    if (i instanceof E && (i = i.valueOf()), i === null || typeof i != "object") return i;
+    if (e.has(i)) return e.get(i);
+    if (i instanceof HTMLElement || typeof i == "function" || Object.getPrototypeOf(i) === null) return i;
+    if (Array.isArray(i)) {
+        const n = i.map(r => Z(r, e));
+        return e.set(i, n), n
+    }
+    if (i instanceof Date) return new Date(i);
+    if (i instanceof RegExp) return new RegExp(i);
+    if (i instanceof Map) {
+        const n = new Map;
+        e.set(i, n);
+        for (const [r, s] of i) n.set(Z(r, e), Z(s, e));
+        return n
+    }
+    if (i instanceof Set) {
+        const n = new Set;
+        e.set(i, n);
+        for (const r of i) n.add(Z(r, e));
+        return n
+    }
+    const t = Object.create(Object.getPrototypeOf(i));
+    e.set(i, t);
+    for (const n of Reflect.ownKeys(i)) t[n] = Z(i[n], e);
+    return Object.isFrozen(i) ? Object.freeze(t) : Object.isSealed(i) && Object.seal(t), t
+}
+globalThis.deepCopy = Z;
+WeakRef.prototype.equals = function(i) {
+    return this.deref() === i.deref()
+};
+Object.defineProperty(Element.prototype, "onInit", {
+    value: function() {},
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+});
+Object.defineProperty(Element.prototype, "getElementById", {
+    value: function(i) {
+        return this.querySelector(`#${i}`)
+    },
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+});
+
+function H(i) {
+    Object.defineProperty(i, "value", {
+        get: function() {
+            return this.valueOf()
+        },
+        set: function(e) {
+            this.valueOf(e)
+        }
+    }), Object.defineProperty(i, "subscribe", {
+        value: function(e) {}
+    }), Object.defineProperty(i, "unsubscribe", {
+        value: function(e) {}
+    })
+}
+H(String.prototype);
+H(Number.prototype);
+H(Boolean.prototype);
+H(Array.prototype);
+H(Map.prototype);
+H(Set.prototype);
+
+function ut(i) {
+    const e = Object.getOwnPropertyDescriptor(i, "value");
+    e && Object.defineProperty(i, "value", {
+        set: function(t) {
+            if (t instanceof E) {
+                const n = () => t.value = this.value;
+                this.addEventListener("input", n), t.subscribe(this, "value", () => this.removeEventListener("input", n))
+            } else e.set.call(this, t)
+        }
+    })
+}
+
+function ft(i) {
+    const e = Object.getOwnPropertyDescriptor(i, "checked");
+    e && Object.defineProperty(i, "checked", {
+        set: function(t) {
+            if (t instanceof E) {
+                const n = () => t.value = this.checked;
+                this.addEventListener("input", n), this.subscribe(this, "checked", () => this.removeEventListener("input", n))
+            } else e.set.call(this, t)
+        }
+    })
+}
+
+function ht(i) {
+    Object.defineProperty(i, "disabled", {
+        get: function() {
+            return this.hasAttribute("disabled")
+        },
+        set: function(e) {
+            e instanceof E ? e.subscribe(this, "disabled") : e ? this.setAttribute("disabled", "") : this.removeAttribute("disabled")
+        }
+    })
+}
+
+function dt(i) {
+    Object.defineProperty(i, "hidden", {
+        get: function() {
+            return this.hasAttribute("hidden")
+        },
+        set: function(e) {
+            e instanceof E ? e.subscribe(this, "hidden") : e ? this.setAttribute("hidden", "") : this.removeAttribute("hidden")
+        }
+    })
+}
+
+function mt(i) {
+    return !i || typeof i?.value == "function" ? !1 : "value" in i ? !!i.writable : "get" in i || "set" in i ? typeof i.set == "function" : !1
+}
+
+function pt(i, e) {
+    const t = We(i, e);
+    mt(t) && Object.defineProperty(i, e, {
+        set: function(n) {
+            n instanceof E ? n.subscribe(this, e?.toString()) : t.set.call(this, n?.valueOf())
+        }
+    })
+}
+
+function We(i, e) {
+    return i == null ? void 0 : Object.getOwnPropertyDescriptor(i, e) || We(Object.getPrototypeOf(i), e)
+}
+
+function J(i, e) {
+    e == null && (e = Object.getOwnPropertyNames(i)), e.includes("disabled") || ht(i), e.includes("hidden") || dt(i);
+    for (const t of e) t == "value" ? ut(i) : t == "checked" ? ft(i) : pt(i, t)
+}
+J(Element.prototype);
+J(HTMLElement.prototype);
+J(HTMLButtonElement.prototype);
+J(HTMLInputElement.prototype);
+J(HTMLTextAreaElement.prototype);
+J(HTMLImageElement.prototype);
+Object.defineProperty(Element.prototype, "variant", {
+    get: function() {
+        return this.getAttribute("variant") || "default"
+    },
+    set: function(i) {
+        i instanceof E ? i.subscribe(this, "variant") : (i = i?.toString()?.trim() || "default", i == "default" || i == null || i.trim().length == 0 ? this.removeAttribute("variant") : this.setAttribute("variant", i), I.getVariant(this.constructor, i)?.(this))
+    }
+});
+Object.defineProperty(Element.prototype, "connectedCallback", {
+    value: function() {
+        this.dispatchEvent(new CustomEvent("onConnected", {
+            bubbles: !1,
+            cancelable: !0
+        })), this?.onConnected()
+    },
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+});
+Object.defineProperty(Element.prototype, "disconnectedCallback", {
+    value: function() {
+        this.dispatchEvent(new CustomEvent("onDisconnected", {
+            bubbles: !1,
+            cancelable: !0
+        })), this?.onDisconnected()
+    },
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+});
+Object.defineProperty(window, "scoped", {
+    value: function(i) {},
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+});
+try {
+    const i = Object.getOwnPropertyDescriptor(HTMLButtonElement.prototype, "type").set;
+    Object.defineProperty(HTMLButtonElement.prototype, "onfile", {
+        value: function(e) {},
+        writable: !0,
+        configurable: !0,
+        enumerable: !0
+    }), Object.defineProperty(HTMLButtonElement.prototype, "accept", {
+        get: function() {
+            return this.getAttribute("accept") || ""
+        },
+        set: function(e) {
+            this.setAttribute("accept", e)
+        }
+    }), Object.defineProperty(HTMLButtonElement.prototype, "multiple", {
+        get: function() {
+            return this.hasAttribute("multiple")
+        },
+        set: function(e) {
+            e ? this.setAttribute("multiple", "") : this.removeAttribute("multiple")
+        }
+    }), Object.defineProperty(HTMLButtonElement.prototype, "type", {
+        set: function(e) {
+            this.__onButtonFile__ && (this.__input_file__ && this.removeChild(this.__input_file__), this.__input_file__ = void 0, this.removeEventListener("click", this.__onButtonFile__)), e == "file" && (this.__input_file__ = new Se({
+                type: "file",
+                style: {
+                    display: "none"
+                }
+            }), this.__input_file__.onchange = t => {
+                this.onfile(t.target.files), t.stopPropagation(), t.preventDefault()
+            }, this.__input_file__.onclick = t => {
+                this.removeChild(this.__input_file__), t.stopPropagation()
+            }, this.__onButtonFile__ = () => {
+                this.__input_file__.accept = this.accept, this.__input_file__.multiple = this.multiple, this.appendChild(this.__input_file__), this.__input_file__.click()
+            }, this.addEventListener("click", this.__onButtonFile__)), i.call(this, e)
+        }
+    })
+} catch {}
+Object.defineProperty(Element.prototype, "onInit", {
+    value: function() {},
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+});
+Object.defineProperty(Element.prototype, "getParent", {
+    value: function() {
+        return this.parentElement
+    },
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+});
+Object.defineProperty(Element.prototype, "onConnected", {
+    value: function() {},
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+});
+Object.defineProperty(Element.prototype, "onDisconnected", {
+    value: function() {},
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+});
+Object.defineProperty(Element.prototype, "unmount", {
+    value: function() {},
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+});
+Object.defineProperty(Element.prototype, "addClassName", {
+    value: function(...i) {
+        for (const e of i) {
+            const t = e.match(/\S+/g) || [];
+            t.length > 0 && this.classList.add(...t)
+        }
+    },
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+});
+Object.defineProperty(Element.prototype, "removeClassName", {
+    value: function(...i) {
+        for (const e of i) {
+            const t = e.match(/\S+/g) || [];
+            t.length > 0 && this.classList.remove(...t)
+        }
+    },
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+});
+Object.defineProperty(Element.prototype, "setStyle", {
+    value: function(i) {
+        for (const [e, t] of Object.entries(i)) this.style[e] = t
+    },
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+});
+Object.defineProperty(Element.prototype, "onEvent", {
+    value: function(i, e, t) {
+        P.addEventListener(this, i, e, t)
+    },
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+});
+Object.defineProperty(Element.prototype, "createEvent", {
+    value: function(i, ...e) {
+        return P.createEvent(i, ...e)
+    },
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+});
+Object.defineProperty(Element.prototype, "removeEvent", {
+    value: function(i) {
+        P.removeEventListener(this, i)
+    },
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+});
+Object.defineProperty(Element.prototype, "removeEvents", {
+    value: function() {
+        P.removeEventListeners(this)
+    },
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+});
+Object.defineProperty(Element.prototype, "emitEvent", {
+    value: function(i, ...e) {
+        return P.emitEvent(i, ...e)
+    },
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+});
+Object.defineProperty(Element.prototype, "deleteEvent", {
+    value: function(i) {
+        P.deleteEvent(i)
+    },
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+});
+const we = Element.prototype.append;
+
+function gt(i, e) {
+    return i instanceof HTMLElement ? e.length - e.indexOf(i) : -1
+}
+
+function bt(i, e, t, n) {
+    const r = Array.from(i.childNodes),
+        s = r.indexOf(e),
+        o = r.indexOf(t);
+    if (Array.isArray(n) || (n = [n]), n = n.filter(Boolean).map(p => p instanceof HTMLElement ? p : document.createTextNode(p?.toString() || p)), s === -1 || o === -1 || o <= s) return;
+    const f = r.slice(s + 1, o),
+        l = f.filter(p => !n.find(v => v === p)),
+        C = f.filter(p => n.find(v => v === p)),
+        h = [];
+    for (const p of l) p.remove();
+    for (const [p, v] of n.entries()) v && (gt(v, C), n.length - n.indexOf(v), h.unshift({
+        element: v,
+        action: C[p] === v ? "keep" : "insert",
+        before: n[p + 1] ? n[p + 1] : t
+    }));
+    for (const p of h) {
+        const {
+            element: v,
+            action: w,
+            before: k
+        } = p;
+        w !== "keep" && w === "insert" && i.insertBefore(v, k)
+    }
+}
+Element.prototype.append = function(...i) {
+    if (i.find(t => t instanceof E))
+        for (const t of i)
+            if (t instanceof E) {
+                const n = t,
+                    r = new Comment(`ref:${n.id}:start`),
+                    s = new Comment(`ref:${n.id}:end`);
+                we.call(this, r, s), n.subscribe(o => bt(this, r, s, o))
+            } else we.call(this, t);
+    else we.call(this, ...i)
+};
+Window.prototype.getTheme = function() {
+    return localStorage.getItem("theme") || "light"
+};
+Window.prototype.setTheme = function(i) {
+    document.querySelector("html")?.setAttribute("data-theme", i), localStorage.setItem("theme", i)
+};
+Array.prototype.clear = function() {
+    this.length = 0
+};
+Object.defineProperty(SVGElement.prototype, "complete", {
+    value: !1,
+    writable: !0,
+    configurable: !0,
+    enumerable: !0
+}), Object.defineProperty(SVGElement.prototype, "src", {
+    get: function() {
+        return this.getAttribute("src") || ""
+    },
+    set: function(i) {
+        i ? this.setAttribute("src", i) : this.removeAttribute("src")
+    }
+});
+String.prototype.toNumber = function() {
+    return new Number(this).valueOf()
+};
+String.prototype.toInt = function(i) {
+    return parseInt(this, i)
+};
+String.prototype.toDate = function() {
+    return new Date(this)
+};
+class Oe extends HTMLButtonElement {
+    static TAG = "tc-button-element";
+    loading;
+    constructor(e) {
+        super();
+        const t = e?.type;
+        delete e?.type, this.loading = e?.loading != null ? e?.loading : !0, I.applyProps(this, e), t && (this.type = t), e?.accept && (this.accept = e.accept), e?.multiple && (this.multiple = e.multiple)
+    }
+    set type(e) {
+        super.type = e
+    }
+    set onclick(e) {
+        this.loading && e.constructor.name === "AsyncFunction" ? super.onclick = async t => {
+            if (!this.hasAttribute("loading"))
+                if (this.loading) {
+                    this.setAttribute("loading", "");
+                    try {
+                        await e(t)
+                    } catch {}
+                    this.removeAttribute("loading")
+                } else e(t)
+        }: super.onclick = e
+    }
+}
+TypeComposer.defineElement(Oe.TAG, Oe, {
+    extends: "button"
+});
+class q extends HTMLDivElement {
+    static TAG = "tc-div-element";
+    constructor(e) {
+        super(), I.applyProps(this, e)
+    }
+}
+TypeComposer.defineElement(q.TAG, q, {
+    extends: "div"
+});
+class Se extends HTMLInputElement {
+    static TAG = "tc-input-element";
+    #e;
+    #t;
+    constructor(e) {
+        if (super(), e?.accept && (this.accept = e.accept), this.multiple = e?.multiple || !1, this.readOnly = e?.readOnly || !1, I.applyProps(this, e), e?.oninputDelay) {
+            const t = e.delay ?? 250;
+            let n;
+            this.addEventListener("input", () => {
+                clearTimeout(n), n = window.setTimeout(() => {
+                    e.oninputDelay?.(this.value)
+                }, t)
+            })
+        }
+        e?.maxLength !== void 0 && (this.maxLength = e?.maxLength.valueOf()), e?.minLength !== void 0 && (this.minLength = e?.minLength), e?.min !== void 0 && (this.min = e?.min), e?.max !== void 0 && (this.max = e?.max), e?.pattern && (this.pattern = e?.pattern), e?.required && (this.required = e?.required || !1)
+    }
+    get validation() {
+        return this.#e
+    }
+    set validation(e) {
+        this.#e = e, this.#t && this.removeEventListener("input", this.#t), this.#t = void 0, e && (this.#t = this.__checkValidity.bind(this), this.addEventListener("input", this.#t))
+    }
+    __checkValidity() {
+        if (!this.validation) return;
+        let e = this.validationMessage;
+        this.validation.required && !this.value ? e = "Required field" : this.validation.minLength !== void 0 && this.value.length < this.validation.minLength ? e = `Minimum length is ${this.validation.minLength}` : this.validation.maxLength !== void 0 && this.value.length > this.validation.maxLength ? e = `Maximum length is ${this.validation.maxLength}` : this.validation.min !== void 0 && Number(this.value.toString()) < Number(this.validation.min) ? e = `Minimum value is ${this.validation.min}` : this.validation.max !== void 0 && Number(this.value) > Number(this.validation.max) ? e = `Maximum value is ${this.validation.max}` : this.validation.pattern && !this.validation.pattern.test(this.value) ? e = "Invalid value" : e = "", e !== this.validationMessage && (this.setCustomValidity(e), this.reportValidity())
+    }
+}
+TypeComposer.defineElement(Se.TAG, Se, {
+    extends: "input"
+});
+const _e = new Map;
+
+function yt(i, e) {
+    if (!(!i || !e)) {
+        for (let t = 0; t < i.attributes.length; t++) {
+            const n = i.attributes[t];
+            e.setAttribute(n.name, n.value)
+        }
+        for (; e.firstChild;) e.removeChild(e.firstChild);
+        for (let t = 0; t < i.childNodes.length; t++) {
+            const n = i.childNodes[t].cloneNode(!0);
+            e.appendChild(n)
+        }
+    }
+}
+const z = (i, e, t) => {
+        if (t && t.length > 0 && (t.startsWith("<?xml") || t.includes("<svg"))) {
+            const r = new DOMParser().parseFromString(t, "image/svg+xml"),
+                s = r.getElementsByTagName("parsererror"),
+                o = r.querySelector("svg");
+            if (s.length == 0 && o && o?.tagName == "svg") return yt(o, i), i.complete = !0, i.dispatchEvent(new CustomEvent("load")), e && _e.set(e, t), i.onLoad && i.onLoad(), !0
+        } else i.dispatchEvent(new CustomEvent("error")), i.onError && i.onError();
+        return !1
+    },
+    vt = function(i) {
+        if (i?.src && i.src.includes("<svg") && i.src.includes("</svg>")) {
+            const r = new q;
+            r.innerHTML = i.src;
+            const s = r.firstElementChild;
+            return s && I.applyProps(s, i), Object.defineProperty(s, "src", {
+                get: () => "",
+                set: () => {
+                    console.warn("svg static: src is readonly")
+                }
+            }), s
+        }
+        const e = document.createElementNS("http://www.w3.org/2000/svg", "svg"),
+            t = r => {
+                for (const s of r)
+                    if (s.type === "attributes" && s.attributeName == "src") {
+                        e.complete = !1;
+                        const o = s.target?.getAttribute(s.attributeName) || "";
+                        if (o.endsWith(".svg")) {
+                            const f = _e.get(o);
+                            if (f) z(e, void 0, f);
+                            else {
+                                const l = window.location.origin;
+                                new URL(o, l).origin === l ? fetch(o, {
+                                    method: "GET",
+                                    headers: {
+                                        "Content-Type": "image/svg+xml",
+                                        Accept: "image/svg+xml"
+                                    },
+                                    credentials: "same-origin"
+                                }).then(async h => {
+                                    if (h.ok) {
+                                        const p = await h.text();
+                                        z(e, o, p)
+                                    }
+                                }).catch(() => {
+                                    e.complete = !0, z(e, void 0, document.createElementNS("http://www.w3.org/2000/svg", "svg").outerHTML), e.dispatchEvent(new CustomEvent("error")), e.onError && e.onError()
+                                }) : (z(e, void 0, document.createElementNS("http://www.w3.org/2000/svg", "svg").outerHTML), e.complete = !0, e.dispatchEvent(new CustomEvent("error")), e.onError && e.onError())
+                            }
+                        } else z(e, void 0, document.createElementNS("http://www.w3.org/2000/svg", "svg").outerHTML), e.complete = !0, e.dispatchEvent(new CustomEvent("error")), e.onError && e.onError()
+                    }
+            },
+            n = new MutationObserver(t);
+        return n.observe(e, {
+            attributes: !0,
+            childList: !1,
+            subtree: !1,
+            attributeOldValue: !0,
+            attributeFilter: ["src"]
+        }), I.applyProps(e, i), e.src = i.src, Object.defineProperty(e, "__observer__", {
+            value: n,
+            writable: !1,
+            enumerable: !1,
+            configurable: !1
+        }), e
+    };
+class wt extends vt {
+    static TAG = "svg";
+    constructor(e) {
+        super(e)
+    }
+}
+class Ee extends I {
+    static TAG = "tc-grid-panel";
+    constructor(e) {
+        super(e), this.addClassName("grid-element"), e?.columns && (this.columns = e.columns), e?.rows && (this.rows = e.rows), this.columns = "1"
+    }
+    set columns(e) {
+        typeof e == "string" ? this.style.gridTemplateColumns = e : this.style.gridTemplateColumns = `repeat(${e}, auto)`
+    }
+    set rows(e) {
+        typeof e == "string" ? this.style.gridTemplateRows = e : this.style.gridTemplateRows = `repeat(${e}, auto)`
+    }
+}
+TypeComposer.defineElement(Ee.TAG, Ee);
+
+function Re(i, e = "", t = []) {
+    let n = [];
+    for (const r of i) {
+        const s = `${e}/${r.path}`.replace(/\/+/g, "/"),
+            o = [...t];
+        (r.component || r.redirect) && o.push({
+            component: r.component,
+            path: r.path,
+            id: r.id,
+            guard: r.guard,
+            redirect: r.redirect,
+            title: r.title
+        }), n.push({
+            path: s,
+            routers: o
+        }), r.children && (n = n.concat(Re(r.children, s, o)))
+    }
+    return n
+}
+
+function Ot(i, e) {
+    let t = null;
+    for (const n of e) {
+        const r = new RegExp(`^${n.path.replace(/\*\*/g,".*").replace(/\*/g,"[^/]+").replace(/:[^\s/]+/g,"([^/]+)")}$`),
+            s = i.match(r);
+        if (s || n.path === `/${y.PATH_WILDCARD}`) {
+            const o = {},
+                f = n.path.match(/:[^\s/]+/g);
+            f && f.forEach((l, C) => {
+                o[l.replace(":", "")] = s[C + 1]
+            }), (!t || n.path.length > t.path.length) && (t = {
+                path: n.path,
+                routers: n.routers.map(l => ({
+                    component: l.component,
+                    path: l.path,
+                    id: l.id,
+                    guard: l.guard,
+                    title: l.title,
+                    redirect: l.redirect,
+                    build: void 0
+                })),
+                params: o
+            })
+        }
+    }
+    return t && (t.url = i), t
+}
+
+function St() {
+    const i = new q;
+    return i.style.width = "100vw", i.style.height = "100vh", i.style.display = "flex", i.style.flexDirection = "column", i.style.justifyContent = "center", i.style.alignItems = "center", i.style.overflow = "hidden", i.style.position = "fixed", i.innerHTML = "<div style='text-align: center;'><h1 style='text-shadow: 0 3px 0px $color-base, 0 6px 0px #333; color: #f54f59; font-size: 6em; font-weight: 700; line-height: 0.6em;'>404</h1><h1 style='text-shadow: 0 3px 0px $color-base, 0 6px 0px #333; color: #f54f59; font-size: 10; font-weight: 15; line-height: 0.6em;'>Page not found</h1></div>", i
+}
+class y {
+    static #e;
+    #t;
+    #n = {};
+    routes = [];
+    url = window.location.pathname;
+    urlValid = "";
+    pageNotFound;
+    match = null;
+    static SEGMENT_WILDCARD = "*";
+    static PATH_WILDCARD = "**";
+    beforeEach = () => {};
+    constructor(e, t, n) {
+        if (y.#e) throw new Error("Router already exists");
+        y.#e = this, this.#t = t, this.#t === "hash" && (window.location.pathname.startsWith("/#/") || (window.location.pathname === "/" ? window.history.replaceState({}, "", "/#/") : window.history.replaceState({}, "", "/#" + window.location.pathname))), this.pageNotFound = n, this.createAutoId(e, 0), this.routes = Re(e), window.addEventListener(t == "history" ? "popstate" : "hashchange", () => this.handleRoute()), this.handleRoute()
+    }
+    createAutoId(e = [], t) {
+        for (const n of e) n.id = `${n.path}_${++t}`, n.children && (t = this.createAutoId(n.children, t));
+        return t
+    }
+    getQueryParams(e) {
+        const t = {},
+            n = e.split("?")[1];
+        if (n) {
+            const r = n.split("&");
+            for (const s of r) {
+                const [o, f] = s.split("=");
+                t[decodeURIComponent(o)] = decodeURIComponent(f || "")
+            }
+        }
+        return t
+    }
+    handleRoute() {
+        const e = this.#t === "hash" ? window.location.hash : window.location.pathname || "/";
+        this.url = e, this.#t === "hash" && (this.url = this.url.replace(/^#\//, "/")), this.#n = this.getQueryParams(this.url), this.buildRoutePage(Ot(this.url.split("?")[0], this.routes))
+    }
+    async buildRoutePage(e) {
+        let t = "";
+        if (!e || !e.routers.length) se.setPage(this.pageNotFound ? new this.pageNotFound : St()), this.match = null;
+        else {
+            if (!await this.checkGuard(e)) return;
+            if (this.match)
+                for (let r = 0; r < e.routers.length && this.match?.routers[r]?.id; r++) {
+                    const s = e.routers[r];
+                    s.id == this.match?.routers[r]?.id && (s.build = this.match.routers[r].build)
+                }
+            for (let r = 0; r < e.routers.length; r++) {
+                const s = e.routers[r];
+                if (s.redirect) {
+                    this.match = null, y.go(s.redirect);
+                    return
+                }
+                s.title && (t = s.title), s.parent = r == 0 ? void 0 : e.routers[r - 1]
+            }
+            const n = e.routers[0];
+            if (this.match = e, !n.build)
+                if (n.component instanceof Function && n.component.prototype instanceof Element) n.build = se.setPage(new n.component);
+                else {
+                    const r = await n.component();
+                    n.build = se.setPage(new r.default)
+                }
+        }
+        t && (document.title = t), this.beforeEach(e), document.body?.emitEvent("router:watch", {
+            url: this.url,
+            props: y.props
+        })
+    }
+    async checkGuard(e) {
+        const t = e.routers.map(r => r.guard).filter(Boolean);
+        let n = !0;
+        for await (const r of t) if (n = await new Promise(o => {
+                const f = {
+                    path: e.url,
+                    params: e.params,
+                    query: this.#n,
+                    redirect: l => {
+                        o(l)
+                    },
+                    resolve: () => {
+                        o(!0)
+                    },
+                    break: () => {
+                        o(!1)
+                    },
+                    reject: () => {
+                        o(!1)
+                    }
+                };
+                r.beforeEach(f)
+            }), typeof n == "string") return y.go(n), !1;
+        return n ? this.urlValid = e.url : y.go(y.#e?.urlValid), n === !0
+    }
+    static create(e) {
+        y.#e = new y(e.routes, e.history || "history", e.pageNotFound)
+    }
+    static reload() {
+        y.#e ? (y.#e.match = null, y.#e.handleRoute()) : window.location.reload()
+    }
+    static get props() {
+        if (window.location.hash) {
+            const e = window.location.hash.split("?");
+            if (e.length > 1) {
+                const t = new URLSearchParams(e[1]),
+                    n = {};
+                for (const [r, s] of t) n[r] = s;
+                return n
+            }
+        } else {
+            const e = new URLSearchParams(window.location.search),
+                t = {};
+            for (const [n, r] of e) t[n] = r;
+            return t
+        }
+        return {}
+    }
+    static get history() {
+        return y.#e.#t
+    }
+    static buildURL(e, t) {
+        const n = Object.keys(t).map(r => encodeURIComponent(r) + "=" + encodeURIComponent(t[r])).join("&");
+        return e + (n ? "?" + n : "")
+    }
+    static async go(e, t) {
+        if (!y.#e) throw new Error("Router not initialized");
+        if (!e) return;
+        e.startsWith("/") || (e = "/" + e);
+        const n = y.buildURL(e, t || {});
+        y.#e.#t === "history" ? history.pushState(t || {}, "", n) : window.location.hash = n, y.#e?.handleRoute()
+    }
+    static back() {
+        window.history.back()
+    }
+    static forward() {
+        window.history.forward()
+    }
+    static getRouteViewFree(e) {
+        if (!y.#e || !y.#e.match) return;
+        const {
+            routers: t
+        } = y.#e.match, n = t.find(r => (!r.routeView || r.routeView === e) && r.parent);
+        if (n) return n.routeView = e, n
+    }
+    static get pathname() {
+        return (y.#e?.url || window.location.pathname).replace(/^\//, "")
+    }
+}
+class Et extends q {
+    isOccupied = !1;
+    currentPlayer = null;
+    iconElement = null;
+    x;
+    y;
+    onClickCallback;
+    constructor(e = "100px", t = 0, n = 0) {
+        super({
+            className: "cell-default",
+            width: e === "auto" ? "100%" : e,
+            height: e === "auto" ? "100%" : e,
+            aspectRatio: "1"
+        }), this.x = t, this.y = n, this.addEventListener("click", this.handleClick.bind(this))
+    }
+    setOnClick(e) {
+        this.onClickCallback = e
+    }
+    handleClick() {
+        !this.isOccupied && this.onClickCallback && this.onClickCallback(this.x, this.y)
+    }
+    markCell(e) {
+        if (this.isOccupied) throw new Error("Cell is already occupied");
+        this.isOccupied = !0, this.currentPlayer = e, this.iconElement = new wt({
+            className: "icon w-12 h-12",
+            src: e === "X" ? "cross.svg" : "circle.svg"
+        }), this.appendChild(this.iconElement), e === "X" ? this.className = "cell-x" : this.className = "cell-o"
+    }
+    resetCell() {
+        this.isOccupied = !1, this.currentPlayer = null, this.iconElement && (this.removeChild(this.iconElement), this.iconElement = null), this.className = "cell-default"
+    }
+    getOccupied() {
+        return this.isOccupied
+    }
+    getCurrentPlayer() {
+        return this.currentPlayer
+    }
+    highlightWin() {
+        this.classList.contains("cell-win") || this.classList.add("cell-win")
+    }
+    removeWinHighlight() {
+        this.classList.remove("cell-win")
+    }
+}
+class x {
+    static SIZE = 3;
+    board;
+    currentPlayer;
+    winner = null;
+    isDraw = !1;
+    moves = 0;
+    SIZE = x.SIZE;
+    constructor() {
+        this.board = this.createEmptyBoard(), this.currentPlayer = this.randomPlayer()
+    }
+    makeMove(e, t) {
+        return this.isValidMove(e, t) ? (this.board[e][t] = this.currentPlayer, this.moves++, this.checkWin() ? this.winner = this.currentPlayer : this.moves === this.SIZE * this.SIZE ? this.isDraw = !0 : this.currentPlayer = this.currentPlayer === "X" ? "O" : "X", !0) : !1
+    }
+    isValidMove(e, t) {
+        return !(e < 0 || e >= this.SIZE || t < 0 || t >= this.SIZE || this.board[e][t] !== "" || this.isGameOver())
+    }
+    getCell(e, t) {
+        if (e < 0 || e >= this.SIZE || t < 0 || t >= this.SIZE) throw new Error(`Invalid coordinates: (${e}, ${t})`);
+        return this.board[e][t]
+    }
+    getCurrentPlayer() {
+        return this.currentPlayer
+    }
+    getWinner() {
+        return this.winner
+    }
+    isGameOver() {
+        return this.winner !== null || this.isDraw
+    }
+    getIsDraw() {
+        return this.isDraw
+    }
+    getMoveCount() {
+        return this.moves
+    }
+    getGameStatus() {
+        return this.winner ? `Player ${this.winner} wins!` : this.isDraw ? "It's a draw!" : `Player ${this.currentPlayer}'s turn`
+    }
+    reset() {
+        this.board = this.createEmptyBoard(), this.currentPlayer = this.randomPlayer(), this.winner = null, this.isDraw = !1, this.moves = 0
+    }
+    getWinningPositions() {
+        for (let e = 0; e < this.SIZE; e++)
+            if (this.isWinningRow(e)) {
+                const t = [];
+                for (let n = 0; n < this.SIZE; n++) t.push({
+                    x: e,
+                    y: n
+                });
+                return t
+            } for (let e = 0; e < this.SIZE; e++)
+            if (this.isWinningColumn(e)) {
+                const t = [];
+                for (let n = 0; n < this.SIZE; n++) t.push({
+                    x: n,
+                    y: e
+                });
+                return t
+            } if (this.isWinningDiagonal(!0)) {
+            const e = [];
+            for (let t = 0; t < this.SIZE; t++) e.push({
+                x: t,
+                y: t
+            });
+            return e
+        }
+        if (this.isWinningDiagonal(!1)) {
+            const e = [];
+            for (let t = 0; t < this.SIZE; t++) e.push({
+                x: t,
+                y: this.SIZE - 1 - t
+            });
+            return e
+        }
+        return null
+    }
+    createEmptyBoard() {
+        return Array(this.SIZE).fill(null).map(() => Array(this.SIZE).fill(""))
+    }
+    randomPlayer() {
+        return Math.random() < .5 ? "X" : "O"
+    }
+    checkWin() {
+        for (let e = 0; e < this.SIZE; e++)
+            if (this.isWinningRow(e)) return !0;
+        for (let e = 0; e < this.SIZE; e++)
+            if (this.isWinningColumn(e)) return !0;
+        return !!(this.isWinningDiagonal(!0) || this.isWinningDiagonal(!1))
+    }
+    isWinningRow(e) {
+        const t = this.board[e][0];
+        if (t === "") return !1;
+        for (let n = 1; n < this.SIZE; n++)
+            if (this.board[e][n] !== t) return !1;
+        return !0
+    }
+    isWinningColumn(e) {
+        const t = this.board[0][e];
+        if (t === "") return !1;
+        for (let n = 1; n < this.SIZE; n++)
+            if (this.board[n][e] !== t) return !1;
+        return !0
+    }
+    isWinningDiagonal(e) {
+        const t = e ? this.board[0][0] : this.board[0][this.SIZE - 1];
+        if (t === "") return !1;
+        for (let n = 1; n < this.SIZE; n++)
+            if ((e ? this.board[n][n] : this.board[n][this.SIZE - 1 - n]) !== t) return !1;
+        return !0
+    }
+}
+class Ct {
+    game;
+    onStateChange;
+    constructor() {
+        this.game = new x
+    }
+    makeMove(e, t) {
+        const n = this.game.makeMove(e, t);
+        return n && this.notifyStateChange(), n
+    }
+    resetGame() {
+        this.game.reset(), this.notifyStateChange()
+    }
+    getCurrentPlayer() {
+        return this.game.getCurrentPlayer()
+    }
+    isGameOver() {
+        return this.game.isGameOver()
+    }
+    getWinner() {
+        return this.game.getWinner()
+    }
+    isDraw() {
+        return this.game.getIsDraw()
+    }
+    getGameStatus() {
+        return this.game.getGameStatus()
+    }
+    isValidMove(e, t) {
+        return this.game.isValidMove(e, t)
+    }
+    getCell(e, t) {
+        return this.game.getCell(e, t)
+    }
+    getMoveCount() {
+        return this.game.getMoveCount()
+    }
+    getWinningPositions() {
+        return this.game.getWinningPositions()
+    }
+    setOnStateChange(e) {
+        this.onStateChange = e
+    }
+    notifyStateChange() {
+        this.onStateChange && this.onStateChange({
+            currentPlayer: this.getCurrentPlayer(),
+            isGameOver: this.isGameOver(),
+            winner: this.getWinner(),
+            isDraw: this.isDraw(),
+            gameStatus: this.getGameStatus(),
+            moveCount: this.getMoveCount()
+        })
+    }
+}
+class At extends Ee {
+    cells = [];
+    gameManager;
+    statusDisplay;
+    constructor() {
+        super({
+            className: "grid",
+            gap: `${Math.max(4,12-x.SIZE)}px`,
+            "grid-template-rows": `repeat(${x.SIZE}, 1fr)`,
+            "grid-template-columns": `repeat(${x.SIZE}, 1fr)`,
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)"
+        }), this.columns = x.SIZE.toString(), this.rows = x.SIZE.toString(), this.style.setProperty("--grid-size", x.SIZE.toString()), this.gameManager = new Ct, this.statusDisplay = new q({
+            className: "game-status",
+            textContent: this.gameManager.getGameStatus()
+        }), this.appendChild(this.statusDisplay), this.initializeCells(), this.gameManager.setOnStateChange(e => {
+            this.updateUI(e)
+        })
+    }
+    initializeCells() {
+        for (let e = 0; e < x.SIZE; e++) {
+            this.cells[e] = [];
+            for (let t = 0; t < x.SIZE; t++) {
+                const n = new Et("auto", e, t);
+                n.setOnClick((r, s) => this.handleCellClick(r, s)), this.cells[e][t] = n, this.appendChild(n)
+            }
+        }
+    }
+    handleCellClick(e, t) {
+        if (this.gameManager.isValidMove(e, t)) {
+            const n = this.gameManager.getCurrentPlayer();
+            this.cells[e][t].markCell(n), this.gameManager.makeMove(e, t) || this.cells[e][t].resetCell()
+        }
+    }
+    updateUI(e) {
+        this.statusDisplay.textContent = e.gameStatus, e.isGameOver && e.winner && this.highlightWinningCells()
+    }
+    highlightWinningCells() {
+        this.clearAllHighlights();
+        const e = this.gameManager.getWinningPositions();
+        e && e.forEach(t => {
+            this.cells[t.x] && this.cells[t.x][t.y] && this.cells[t.x][t.y].highlightWin()
+        })
+    }
+    clearAllHighlights() {
+        for (let e = 0; e < x.SIZE; e++)
+            for (let t = 0; t < x.SIZE; t++) this.cells[e][t].removeWinHighlight()
+    }
+    resetGrid() {
+        this.gameManager.resetGame(), this.clearAllHighlights();
+        for (let e = 0; e < x.SIZE; e++)
+            for (let t = 0; t < x.SIZE; t++) this.cells[e][t].resetCell()
+    }
+}
+class Pt extends I {
+    grid;
+    resetButton;
+    constructor() {
+        super(), this.resetButton = new Oe({
+            className: "reset-button",
+            text: "Reset Game"
+        }), this.resetButton.addEventListener("click", () => {
+            this.grid.resetGrid()
+        }), this.grid = new At, this.appendChild(this.grid), this.appendChild(this.resetButton)
+    }
+}
+se.setPage(new Pt);
